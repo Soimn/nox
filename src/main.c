@@ -65,14 +65,11 @@ typedef struct X_String
 
 typedef struct X_Arena X_Arena;
 
-typedef struct X_Text_Pos
-{
-  X_u32 offset;
-} X_Text_Pos;
+typedef X_u32 X_Text_Pos;
 
 typedef struct X_Text
 {
-  union { struct X_Text_Pos; X_Text_Pos pos; };
+  X_Text_Pos pos;
   X_u32 size;
 } X_Text;
 
