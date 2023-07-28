@@ -383,10 +383,13 @@ X_Lexer_NextToken(X_Lexer* lexer)
 
           if (base == 16)
           {
-            X_i128 value = {0};
+            // NOTE: This blocks breaks the X_i128 abstraction
 
+            lexer->cursor += 1; // NOTE: skip x/h in 0x/h
+
+            X_i128 value       = {0};
             X_uint digit_count = 0;
-            while (lexer->cursor < lexer->input.size)
+            for (;lexer->cursor < lexer->input.size; lexer->cursor += 1)
             {
               X_u8 digit;
               X_u8 c = lexer->input.data[lexer->cursor];
@@ -406,22 +409,137 @@ X_Lexer_NextToken(X_Lexer* lexer)
               //// ERROR: Missing digits
               X_NOT_IMPLEMENTED;
             }
-            else if (is_float && (((digit_count-1)&digit_count) != 0 || (X_uint)(digit_count-4) >= 12))
-            {
-              //// ERROR: Hex floats must have either 4, 8 or 16 digits
-              X_NOT_IMPLEMENTED;
-            }
             else
             {
-              token.kind = (is_float ? X_Token_Float : X_Token_Int);
-              // TODO:
-              X_NOT_IMPLEMENTED;
+              if (!is_float)
+              {
+                token.kind = X_Token_Int;
+                // TODO: value
+                X_NOT_IMPLEMENTED;
+              }
+              else
+              {
+                if (digit_count == 4)
+                {
+                  X_ASSERT(value.hi == 0 && value.lo >> 48 == 0);
+                  // TODO: f16
+                  X_NOT_IMPLEMENTED;
+                }
+                else if (digit_count == 8)
+                {
+                  X_ASSERT(value.hi == 0 && value.lo >> 32 == 0);
+                  X_F32_Bits val = { .bits = (X_u32)value.lo };
+
+                  token.kind = X_Token_Float;
+                  // TODO: value
+                  X_NOT_IMPLEMENTED;
+                }
+                else if (digit_count == 16)
+                {
+                  X_ASSERT(value.hi == 0);
+                  X_F64_Bits val = { .bits = value.lo };
+
+                  // TODO: value
+                  X_NOT_IMPLEMENTED;
+                }
+                else
+                {
+                  //// ERROR: Hex floats may only have 4, 8 or 16 digits (corresponding to f16, f32 and f64)
+                  X_NOT_IMPLEMENTED;
+                }
+              }
             }
           }
           else
           {
             X_ASSERT(base == 10);
-          }
+            X_ASSERT(X_Lexer__IsDigit(c[0]));
+
+            X_i128 value[3]         = { c[0] & 0xF, 0, 0 };
+            X_I128_Status status[3] = {0};
+            X_uint digit_count[3]   = { 1, 0, 0 };
+            X_uint value_idx = 0;
+            X_bool exp_is_negative  = X_false;
+            for (;lexer->cursor < lexer->input.size; lexer->cursor += 1)
+            {
+              X_u8 c = lexer->input.data[lexer->cursor];
+              if (!is_float && c == '.')
+              {
+                is_float  = X_true;
+                value_idx = 1;
+              }
+              else if (value_idx < 2 && (c&0xDF) == 'E')
+              {
+                is_float  = X_true;
+                value_idx = 2;
+
+                if (lexer->cursor+1 < lexer->input.size && (lexer->input.data[lexer->cursor+1] == '+' || lexer->input.data[lexer->cursor+1] == '-'))
+                {
+                  lexer->cursor  += 1; // NOTE: Skip e/E
+                  exp_is_negative = (lexer->input.data[lexer->cursor] == '-');
+                }
+              }
+              else if (c == '_') continue;
+              else if (X_Lexer__IsDigit(c))
+              {
+                X_u8 digit = c & 0xF;
+
+                value[value_idx] = X_I128_MulU8(value[value_idx], digit, &status[value_idx]);
+                value[value_idx] = X_I128_AddU8(value[value_idx], digit, &status[value_idx]);
+                digit_count[value_idx] += 1;
+              }
+              else break;
+            }
+
+            if (!is_float)
+            {
+              if ((status[0] & X_I128Status_Overflow) || (status[0] & X_I128Status_Carry))
+              {
+                //// ERROR: Integer literal has too many digits
+                X_NOT_IMPLEMENTED;
+              }
+              else
+              {
+                token.kind = X_Token_Int;
+                // TODO: value
+                X_NOT_IMPLEMENTED;
+              }
+            }
+            else
+            {
+              if ((status[0] & X_I128Status_Overflow) || (status[0] & X_I128Status_Carry))
+              {
+                //// ERROR: Float literal integer part has too many digits
+                X_NOT_IMPLEMENTED;
+              }
+              else if (digit_count[1] == 0)
+              {
+                //// ERROR: Float literal decimal part has no digits
+                X_NOT_IMPLEMENTED;
+              }
+              else if ((status[1] & X_I128Status_Overflow) || (status[1] & X_I128Status_Carry))
+              {
+                //// ERROR: Float literal decimal part has too many digits
+                X_NOT_IMPLEMENTED;
+              }
+              else if (digit_count[2] == 0)
+              {
+                //// ERROR: Float literal exponent has no digits
+                X_NOT_IMPLEMENTED;
+              }
+              else if ((status[2] & X_I128Status_Overflow) || (status[2] & X_I128Status_Carry))
+              {
+                //// ERROR: Float literal exponent has too many digits
+                X_NOT_IMPLEMENTED;
+              }
+              else
+              {
+                token.kind = X_Token_Float;
+                // TODO: value + additional bounds/precision checking
+                X_NOT_IMPLEMENTED;
+              }
+            }
+         }
         }
         else if (c[0] == '"')
         {
