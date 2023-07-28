@@ -35,6 +35,7 @@ typedef enum X_Token_Kind
   X_Token_PeriodParen,                           // .(
   X_Token_PeriodBracket,                         // .[
   X_Token_PeriodBrace,                           // .{
+  X_Token_Underscore,                            // _
   X_Token_Identifier,
   X_Token_String,
   X_Token_Int,
@@ -347,7 +348,7 @@ X_Lexer_NextToken(X_Lexer* lexer)
 
       default:
       {
-        if (c[0] == '_' || X_Lexer__IsAlpha(c[1]))
+        if (c[0] == '_' || X_Lexer__IsAlpha(c[0]))
         {
           X_String identifier = { .data = lexer->input.data + lexer->cursor };
 
@@ -362,12 +363,65 @@ X_Lexer_NextToken(X_Lexer* lexer)
 
           identifier.size = (X_u32)(lexer->cursor + lexer->input.data - identifier.data);
 
-          // TODO: Keywords and interning?
-          X_NOT_IMPLEMENTED;
+          if (identifier.size == 0) token.kind = X_Token_Underscore;
+          else
+          {
+            // TODO: Keywords and interning?
+            X_NOT_IMPLEMENTED;
+          }
         }
-        else if (X_Lexer__IsDigit(c[1]))
+        else if (X_Lexer__IsDigit(c[0]))
         {
-          X_NOT_IMPLEMENTED;
+          X_uint base     = 10;
+          X_bool is_float = X_false;
+
+          if (c[0] == '0')
+          {
+            if      (c[1] == 'x') base = 16;
+            else if (c[1] == 'h') base = 16, is_float = X_true;
+          }
+
+          if (base == 16)
+          {
+            X_i128 value = {0};
+
+            X_uint digit_count = 0;
+            while (lexer->cursor < lexer->input.size)
+            {
+              X_u8 digit;
+              X_u8 c = lexer->input.data[lexer->cursor];
+              if      (X_Lexer__IsDigit(c))         digit = c & 0xF;
+              else if (X_Lexer__IsHexAlphaDigit(c)) digit = (c & 0x1F) + 9;
+              else if (c == '_')                    continue;
+              else break;
+
+              value.hi = (value.hi << 4) | value.lo >> 60;
+              value.lo = (value.lo << 4) | digit;
+
+              digit_count += 1;
+            }
+
+            if (digit_count == 0)
+            {
+              //// ERROR: Missing digits
+              X_NOT_IMPLEMENTED;
+            }
+            else if (is_float && (((digit_count-1)&digit_count) != 0 || (X_uint)(digit_count-4) >= 12))
+            {
+              //// ERROR: Hex floats must have either 4, 8 or 16 digits
+              X_NOT_IMPLEMENTED;
+            }
+            else
+            {
+              token.kind = (is_float ? X_Token_Float : X_Token_Int);
+              // TODO:
+              X_NOT_IMPLEMENTED;
+            }
+          }
+          else
+          {
+            X_ASSERT(base == 10);
+          }
         }
         else if (c[0] == '"')
         {
