@@ -159,6 +159,12 @@ typedef struct X_Token
   X_Text text;
   X_u32 offset_to_line;
   X_u32 line;
+
+  union
+  {
+    X_i128 integer;
+    X_f64 floating;
+  };
 } X_Token;
 
 typedef struct X_Lexer
@@ -413,34 +419,35 @@ X_Lexer_NextToken(X_Lexer* lexer)
             {
               if (!is_float)
               {
-                token.kind = X_Token_Int;
-                // TODO: value
-                X_NOT_IMPLEMENTED;
+                token.kind    = X_Token_Int;
+                token.integer = value;
               }
               else
               {
                 if (digit_count == 4)
                 {
                   X_ASSERT(value.hi == 0 && value.lo >> 48 == 0);
-                  // TODO: f16
-                  X_NOT_IMPLEMENTED;
+
+                  X_F16_Bits val = (X_F16_Bits){ .bits = (X_u16)value.lo };
+
+                  token.kind     = X_Token_Float;
+                  token.floating = (X_f64)X_F16_ToF32(val);
                 }
                 else if (digit_count == 8)
                 {
                   X_ASSERT(value.hi == 0 && value.lo >> 32 == 0);
                   X_F32_Bits val = { .bits = (X_u32)value.lo };
 
-                  token.kind = X_Token_Float;
-                  // TODO: value
-                  X_NOT_IMPLEMENTED;
+                  token.kind     = X_Token_Float;
+                  token.floating = (X_f64)val.f;
                 }
                 else if (digit_count == 16)
                 {
                   X_ASSERT(value.hi == 0);
                   X_F64_Bits val = { .bits = value.lo };
 
-                  // TODO: value
-                  X_NOT_IMPLEMENTED;
+                  token.kind     = X_Token_Float;
+                  token.floating = val.f;
                 }
                 else
                 {
@@ -455,11 +462,11 @@ X_Lexer_NextToken(X_Lexer* lexer)
             X_ASSERT(base == 10);
             X_ASSERT(X_Lexer__IsDigit(c[0]));
 
-            X_i128 value[3]         = { c[0] & 0xF, 0, 0 };
-            X_I128_Status status[3] = {0};
-            X_uint digit_count[3]   = { 1, 0, 0 };
-            X_uint value_idx = 0;
-            X_bool exp_is_negative  = X_false;
+            X_i128 value[3]              = { c[0] & 0xF, 0, 0 };
+            X_I128_Status_Flag status[3] = {0};
+            X_uint digit_count[3]        = { 1, 0, 0 };
+            X_uint value_idx             = 0;
+            X_bool exp_is_negative       = X_false;
             for (;lexer->cursor < lexer->input.size; lexer->cursor += 1)
             {
               X_u8 c = lexer->input.data[lexer->cursor];
@@ -473,7 +480,8 @@ X_Lexer_NextToken(X_Lexer* lexer)
                 is_float  = X_true;
                 value_idx = 2;
 
-                if (lexer->cursor+1 < lexer->input.size && (lexer->input.data[lexer->cursor+1] == '+' || lexer->input.data[lexer->cursor+1] == '-'))
+                if (lexer->cursor+1 < lexer->input.size && (lexer->input.data[lexer->cursor+1] == '+' ||
+                                                            lexer->input.data[lexer->cursor+1] == '-'))
                 {
                   lexer->cursor  += 1; // NOTE: Skip e/E
                   exp_is_negative = (lexer->input.data[lexer->cursor] == '-');
@@ -484,8 +492,8 @@ X_Lexer_NextToken(X_Lexer* lexer)
               {
                 X_u8 digit = c & 0xF;
 
-                value[value_idx] = X_I128_MulU8(value[value_idx], digit, &status[value_idx]);
-                value[value_idx] = X_I128_AddU8(value[value_idx], digit, &status[value_idx]);
+                value[value_idx] = X_I128_MulU64(value[value_idx], digit, &status[value_idx]);
+                value[value_idx] = X_I128_AddU64(value[value_idx], digit, &status[value_idx]);
                 digit_count[value_idx] += 1;
               }
               else break;
@@ -500,9 +508,8 @@ X_Lexer_NextToken(X_Lexer* lexer)
               }
               else
               {
-                token.kind = X_Token_Int;
-                // TODO: value
-                X_NOT_IMPLEMENTED;
+                token.kind    = X_Token_Int;
+                token.integer = value[0];
               }
             }
             else

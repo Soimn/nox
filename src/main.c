@@ -93,6 +93,8 @@ void* X_ReserveMemory(X_umm size);
 void X_CommitMemory(void* base, X_umm size);
 void X_FreeMemory(void* base);
 
+#define X_umul128(A, B, HI_RESULT) _umul128((A), (B), (HI_RESULT))
+
 #include "x_memory.h"
 #include "x_lexer.h"
 #include "x_ast.h"
