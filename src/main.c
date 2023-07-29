@@ -56,6 +56,16 @@ typedef struct X_String
 
 #define X_STRING(S) (X_String){ .data = (S), .size = sizeof(S) - 1 }
 
+X_bool
+X_String_Match(X_String s0, X_String s1)
+{
+  X_bool result = (s0.size == s1.size);
+
+  for (X_uint i = 0; i < s0.size && result != X_false; ++i) result = (s0.data[i] == s1.data[i]);
+
+  return result;
+}
+
 #define X_STATIC_ARRAY_SIZE(A) (sizeof(A)/sizeof(0[A]))
 
 #define X_CONCAT_(X, Y) X##Y
@@ -196,7 +206,7 @@ main(int argc, char** argv)
 
     { /// X_Lexer
       X_Lexer lexer = X_Lexer_Init(X_STRING("+\f/* Thi is\r\n a //\t\t /* deep \v*/ co\fmment \r\n*/,/%->-// ---\r\n>---=+=\r\n\t!~=\r\n\r\n \r\n"
-                                            "001023456789 0xA11BAdF00dFF00FF4242694200000001"
+                                            "001023456789 0xA11BAdF00dFF00FF4242694200000001zadidentifier\"\\\"\\tzad\"proc"
                                            ), 0, 0, 1);
 
       X_Token match_tokens[] = {
@@ -214,9 +224,12 @@ main(int argc, char** argv)
         [11] = { .kind = X_Token_BitXorEQ,    .text.pos =  71, .text.size =  2, .offset_to_line = 69, .line = 5 },
         [12] = { .kind = X_Token_Int,         .text.pos =  80, .text.size = 12, .offset_to_line = 80, .line = 8, .integer = (X_i128){ .hi = 0, .lo = 1023456789 } },
         [13] = { .kind = X_Token_Int,         .text.pos =  93, .text.size = 34, .offset_to_line = 80, .line = 8, .integer = (X_i128){ .hi = 0xA11BAdF00dFF00FFULL, .lo = 0x4242694200000001ULL } },
-        [14] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
-        [15] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
-        [16] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
+        [14] = { .kind = X_Token_Identifier,  .text.pos = 127, .text.size = 13, .offset_to_line = 80, .line = 8, .string = X_STRING("zadidentifier") },
+        [15] = { .kind = X_Token_String,      .text.pos = 140, .text.size =  9, .offset_to_line = 80, .line = 8, .string = X_STRING("\\\"\\tzad") },
+        [16] = { .kind = X_Token_Proc,        .text.pos = 149, .text.size =  4, .offset_to_line = 80, .line = 8, .string = X_STRING("proc") },
+        [17] = { .kind = X_Token_EndOfFile,   .text.pos = 153, .text.size =  0, .offset_to_line = 80, .line = 8 },
+        [18] = { .kind = X_Token_EndOfFile,   .text.pos = 153, .text.size =  0, .offset_to_line = 80, .line = 8 },
+        [19] = { .kind = X_Token_EndOfFile,   .text.pos = 153, .text.size =  0, .offset_to_line = 80, .line = 8 },
       };
 
       for (X_uint i = 0; i < X_STATIC_ARRAY_SIZE(match_tokens); ++i)
@@ -225,7 +238,9 @@ main(int argc, char** argv)
         X_Token mt = match_tokens[i];
 
         if (t.kind != mt.kind || t.text.pos != mt.text.pos || t.text.size != mt.text.size || t.offset_to_line != mt.offset_to_line || t.line != mt.line ||
-            (t.kind == X_Token_Int && (t.integer.lo != mt.integer.lo || t.integer.hi != mt.integer.hi)))
+            (t.kind == X_Token_Int        && (t.integer.lo != mt.integer.lo || t.integer.hi != mt.integer.hi) ||
+             t.kind == X_Token_Identifier && !X_String_Match(t.string, mt.string)                             ||
+             t.kind == X_Token_String     && !X_String_Match(t.string, mt.string)))
         {
           printf("TOKEN MISMATCH (%llu)\n", i);
           break;

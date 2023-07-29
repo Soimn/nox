@@ -164,6 +164,7 @@ typedef struct X_Token
   {
     X_i128 integer;
     X_f64 floating;
+    X_String string;
   };
 } X_Token;
 
@@ -356,24 +357,56 @@ X_Lexer_NextToken(X_Lexer* lexer)
       {
         if (c[0] == '_' || X_Lexer__IsAlpha(c[0]))
         {
-          X_String identifier = { .data = lexer->input.data + lexer->cursor };
+          // NOTE: lexer->cursor points at c[1], string starts at c[0]
+          X_String identifier = {
+            .data = lexer->input.data + lexer->cursor - 1,
+            .size = 0,
+          };
 
           for (;;)
           {
             if (lexer->cursor >= lexer->input.size) break;
 
             X_u8 ci = lexer->input.data[lexer->cursor];
-            if (ci != '_' || !X_Lexer__IsDigit(ci) || !X_Lexer__IsAlpha(ci)) break;
+            if (ci != '_' && !X_Lexer__IsDigit(ci) && !X_Lexer__IsAlpha(ci)) break;
             else                                                             lexer->cursor += 1;
           }
 
           identifier.size = (X_u32)(lexer->cursor + lexer->input.data - identifier.data);
 
-          if (identifier.size == 0) token.kind = X_Token_Underscore;
+          if (c[0] == '_' && identifier.size == 1) token.kind = X_Token_Underscore;
           else
           {
-            // TODO: Keywords and interning?
-            X_NOT_IMPLEMENTED;
+            // TODO: perfect hash table or interning
+            X_String keyword_strings[X_Token__PastLastKeyword - X_Token__FirstKeyword] = {
+              [0] = X_STRING("if"),
+              [1] = X_STRING("else"),
+              [2] = X_STRING("return"),
+              [3] = X_STRING("continue"),
+              [4] = X_STRING("break"),
+              [5] = X_STRING("true"),
+              [6] = X_STRING("false"),
+              [7] = X_STRING("proc"),
+              [8] = X_STRING("struct"),
+              [9] = X_STRING("asm"),
+            };
+
+            X_u8 i = 0;
+            for (; i < X_STATIC_ARRAY_SIZE(keyword_strings); ++i)
+            {
+              if (X_String_Match(identifier, keyword_strings[i])) break;
+            }
+
+            if (i < X_STATIC_ARRAY_SIZE(keyword_strings))
+            {
+              token.kind   = X_Token__FirstKeyword + i;
+              token.string = identifier;
+            }
+            else
+            {
+              token.kind   = X_Token_Identifier;
+              token.string = identifier;
+            }
           }
         }
         else if (X_Lexer__IsDigit(c[0]))
@@ -550,7 +583,39 @@ X_Lexer_NextToken(X_Lexer* lexer)
         }
         else if (c[0] == '"')
         {
-          X_NOT_IMPLEMENTED;
+          // NOTE: lexer->cursor points at c[1] which is the first symbol after "
+          X_String raw_string = {
+            .data = lexer->input.data + lexer->cursor,
+            .size = 0,
+          };
+
+          while (lexer->cursor < lexer->input.size)
+          {
+            X_u8 c = lexer->input.data[lexer->cursor];
+            if      (c == '"' || c == '\n') break;
+            else if (c == '\\')             lexer->cursor += 2;
+            else                            lexer->cursor += 1;
+          }
+
+          if (lexer->cursor >= lexer->input.size)
+          {
+            //// ERROR: Unterminated string literal
+            X_NOT_IMPLEMENTED;
+          }
+          else if (lexer->input.data[lexer->cursor] == '\n')
+          {
+            //// ERROR: Newline before string literal is terminated
+            X_NOT_IMPLEMENTED;
+          }
+          else
+          {
+            raw_string.size = (X_u32)((lexer->cursor + lexer->input.data) - raw_string.data);
+            lexer->cursor += 1; // NOTE: Skip ending "
+
+            // TODO:
+            token.kind   = X_Token_String;
+            token.string = raw_string;
+          }
         }
         else
         {
