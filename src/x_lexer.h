@@ -234,7 +234,7 @@ X_Lexer_NextToken(X_Lexer* lexer)
     else if (c == '/' && c1 == '/')
     {
       lexer->cursor += 2;
-      while (lexer->cursor < lexer->input.size && *lexer->input.data != '\n') lexer->cursor += 1;
+      while (lexer->cursor < lexer->input.size && lexer->input.data[lexer->cursor] != '\n') lexer->cursor += 1;
     }
     else if (c == '/' && c1 == '*')
     {
@@ -492,7 +492,7 @@ X_Lexer_NextToken(X_Lexer* lexer)
               {
                 X_u8 digit = c & 0xF;
 
-                value[value_idx] = X_I128_MulU64(value[value_idx], digit, &status[value_idx]);
+                value[value_idx] = X_I128_MulU64(value[value_idx],    10, &status[value_idx]);
                 value[value_idx] = X_I128_AddU64(value[value_idx], digit, &status[value_idx]);
                 digit_count[value_idx] += 1;
               }

@@ -55,7 +55,7 @@ X_F16_ToF32(X_F16_Bits f)
 X_F16_Bits
 X_F16_FromF32(X_f32 f)
 {
-  X_F16_Result result;
+  X_F16_Bits result;
 
   X_NOT_IMPLEMENTED;
 

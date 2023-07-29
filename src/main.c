@@ -24,6 +24,7 @@ typedef unsigned __int64 X_u64;
 #define X_U64_MAX ((X_u64)0xFFFFFFFFFFFFFFFFULL)
 
 typedef X_u8 X_bool;
+#define X_true 1
 #define X_false 0
 
 typedef float X_f32;
@@ -54,6 +55,8 @@ typedef struct X_String
 } X_String;
 
 #define X_STRING(S) (X_String){ .data = (S), .size = sizeof(S) - 1 }
+
+#define X_STATIC_ARRAY_SIZE(A) (sizeof(A)/sizeof(0[A]))
 
 #define X_CONCAT_(X, Y) X##Y
 #define X_CONCAT(X, Y) X_CONCAT_(X, Y)
@@ -96,6 +99,8 @@ void X_FreeMemory(void* base);
 #define X_umul128(A, B, HI_RESULT) _umul128((A), (B), (HI_RESULT))
 
 #include "x_memory.h"
+#include "x_int.h"
+#include "x_float.h"
 #include "x_lexer.h"
 #include "x_ast.h"
 
@@ -156,8 +161,80 @@ X_FreeMemory(void* base)
   VirtualFree(base, 0, MEM_RELEASE);
 }
 
+#include <stdio.h>
+#include <string.h>
+
 int
 main(int argc, char** argv)
 {
+  if (argc == 2 && strcmp(argv[1], "test") == 0)
+  {
+    { /// X_i128
+      X_i128 a                  = {0};
+      X_I128_Status_Flag status = 0;
+
+      X_u64 x = 63792321;
+      a = X_I128_AddU64(a, x, &status);
+      X_ASSERT(a.hi == 0);
+      X_ASSERT(a.lo == x);
+      X_ASSERT(status == 0);
+
+      a = X_I128_MulU64(a, 10, &status);
+      X_ASSERT(a.hi == 0);
+      X_ASSERT(a.lo == x*10);
+      X_ASSERT(status == 0);
+
+      a = X_I128_Neg(a);
+      X_ASSERT(a.hi == ~0ULL);
+      X_ASSERT(a.lo == (X_u64)-(X_i64)(x*10));
+
+      a = X_I128_Mul(a, (X_i128){ .hi = ~0ULL, .lo = ~0ULL }, &status);
+      X_ASSERT(a.hi == 0);
+      X_ASSERT(a.lo == x*10);
+      X_ASSERT(status == 0);
+    }
+
+    { /// X_Lexer
+      X_Lexer lexer = X_Lexer_Init(X_STRING("+\f/* Thi is\r\n a //\t\t /* deep \v*/ co\fmment \r\n*/,/%->-// ---\r\n>---=+=\r\n\t!~=\r\n\r\n \r\n"
+                                            "001023456789 0xA11BAdF00dFF00FF4242694200000001"
+                                           ), 0, 0, 1);
+
+      X_Token match_tokens[] = {
+        [0]  = { .kind = X_Token_Plus,        .text.pos =   0, .text.size =  1, .offset_to_line =  0, .line = 1 },
+        [1]  = { .kind = X_Token_Comma,       .text.pos =  46, .text.size =  1, .offset_to_line = 44, .line = 3 },
+        [2]  = { .kind = X_Token_Slash,       .text.pos =  47, .text.size =  1, .offset_to_line = 44, .line = 3 },
+        [3]  = { .kind = X_Token_Rem,         .text.pos =  48, .text.size =  1, .offset_to_line = 44, .line = 3 },
+        [4]  = { .kind = X_Token_Arrow,       .text.pos =  49, .text.size =  2, .offset_to_line = 44, .line = 3 },
+        [5]  = { .kind = X_Token_Minus,       .text.pos =  51, .text.size =  1, .offset_to_line = 44, .line = 3 },
+        [6]  = { .kind = X_Token_Greater,     .text.pos =  60, .text.size =  1, .offset_to_line = 60, .line = 4 },
+        [7]  = { .kind = X_Token_TripleMinus, .text.pos =  61, .text.size =  3, .offset_to_line = 60, .line = 4 },
+        [8]  = { .kind = X_Token_Equals,      .text.pos =  64, .text.size =  1, .offset_to_line = 60, .line = 4 },
+        [9]  = { .kind = X_Token_PlusEQ,      .text.pos =  65, .text.size =  2, .offset_to_line = 60, .line = 4 },
+        [10] = { .kind = X_Token_Not,         .text.pos =  70, .text.size =  1, .offset_to_line = 69, .line = 5 },
+        [11] = { .kind = X_Token_BitXorEQ,    .text.pos =  71, .text.size =  2, .offset_to_line = 69, .line = 5 },
+        [12] = { .kind = X_Token_Int,         .text.pos =  80, .text.size = 12, .offset_to_line = 80, .line = 8, .integer = (X_i128){ .hi = 0, .lo = 1023456789 } },
+        [13] = { .kind = X_Token_Int,         .text.pos =  93, .text.size = 34, .offset_to_line = 80, .line = 8, .integer = (X_i128){ .hi = 0xA11BAdF00dFF00FFULL, .lo = 0x4242694200000001ULL } },
+        [14] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
+        [15] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
+        [16] = { .kind = X_Token_EndOfFile,   .text.pos = 127, .text.size =  0, .offset_to_line = 80, .line = 8 },
+      };
+
+      for (X_uint i = 0; i < X_STATIC_ARRAY_SIZE(match_tokens); ++i)
+      {
+        X_Token t  = X_Lexer_NextToken(&lexer);
+        X_Token mt = match_tokens[i];
+
+        if (t.kind != mt.kind || t.text.pos != mt.text.pos || t.text.size != mt.text.size || t.offset_to_line != mt.offset_to_line || t.line != mt.line ||
+            (t.kind == X_Token_Int && (t.integer.lo != mt.integer.lo || t.integer.hi != mt.integer.hi)))
+        {
+          printf("TOKEN MISMATCH (%llu)\n", i);
+          break;
+        }
+      }
+    }
+
+    printf("Done");
+  }
+
   return 0;
 }
