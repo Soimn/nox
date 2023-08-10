@@ -45,7 +45,7 @@ typedef union X_F64_Bits
 X_f32
 X_F16_ToF32(X_F16_Bits f)
 {
-  X_f32 result;
+  X_f32 result = {0};
 
   X_NOT_IMPLEMENTED;
 
@@ -55,7 +55,7 @@ X_F16_ToF32(X_F16_Bits f)
 X_F16_Bits
 X_F16_FromF32(X_f32 f)
 {
-  X_F16_Bits result;
+  X_F16_Bits result = {0};
 
   X_NOT_IMPLEMENTED;
 

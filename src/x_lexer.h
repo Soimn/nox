@@ -3,6 +3,7 @@
 #define X_TOKEN_KIND__BASS_TO_B(K) ((K) & 0x7F)
 #define X_TOKEN_KIND__B_TO_BASS(K) ((K) | 0x80)
 #define X_TOKEN_KIND__BASS_BIT_IDX 7
+#define X_TOKEN_KIND__IS_BINARY_OP(K) ((X_u8)((K) - X_Token__FirstBinaryOp) < (X_u8)(X_Token__PastLastBinaryOp - X_Token__FirstBinaryOp))
 
 typedef enum X_Token_Kind
 {
@@ -43,7 +44,8 @@ typedef enum X_Token_Kind
   X_Token__PastLastBlock1,
 
   /// BLOCK 2
-  X_Token__FirstMulLevel = X_TOKEN_KIND__BLOCK(2),
+  X_Token__FirstBinaryOp = X_TOKEN_KIND__BLOCK(2),
+  X_Token__FirstMulLevel = X_Token__FirstBinaryOp,
   X_Token_Star = X_Token__FirstMulLevel,         // *
   X_Token_Slash,                                 // /
   X_Token_Rem,                                   // %
@@ -80,6 +82,7 @@ typedef enum X_Token_Kind
   X_Token__FirstOrLevel = X_TOKEN_KIND__BLOCK(6),
   X_Token_Or = X_Token__FirstOrLevel,            // ||
   X_Token__PastLastOrLevel,
+  X_Token__PastLastBinaryOp = X_Token__PastLastOrLevel,
 
   /// BLOCK 7
   X_Token__FirstKeyword = X_TOKEN_KIND__BLOCK(7),
@@ -363,10 +366,8 @@ X_Lexer_NextToken(X_Lexer* lexer)
             .size = 0,
           };
 
-          for (;;)
+          while (lexer->cursor < lexer->input.size)
           {
-            if (lexer->cursor >= lexer->input.size) break;
-
             X_u8 ci = lexer->input.data[lexer->cursor];
             if (ci != '_' && !X_Lexer__IsDigit(ci) && !X_Lexer__IsAlpha(ci)) break;
             else                                                             lexer->cursor += 1;
@@ -448,6 +449,11 @@ X_Lexer_NextToken(X_Lexer* lexer)
               //// ERROR: Missing digits
               X_NOT_IMPLEMENTED;
             }
+            else if (digit_count > 32)
+            {
+              //// ERROR: Too many digits
+              X_NOT_IMPLEMENTED;
+            }
             else
             {
               if (!is_float)
@@ -516,7 +522,7 @@ X_Lexer_NextToken(X_Lexer* lexer)
                 if (lexer->cursor+1 < lexer->input.size && (lexer->input.data[lexer->cursor+1] == '+' ||
                                                             lexer->input.data[lexer->cursor+1] == '-'))
                 {
-                  lexer->cursor  += 1; // NOTE: Skip e/E
+                  lexer->cursor  += 1; // NOTE: Skip e/E but not +/-, this is skipped by the loop
                   exp_is_negative = (lexer->input.data[lexer->cursor] == '-');
                 }
               }

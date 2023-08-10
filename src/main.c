@@ -113,6 +113,7 @@ void X_FreeMemory(void* base);
 #include "x_float.h"
 #include "x_lexer.h"
 #include "x_ast.h"
+#include "x_parser.h"
 
 #define UNICODE
 #define NOMINMAX            1
