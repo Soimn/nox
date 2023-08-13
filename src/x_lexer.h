@@ -167,7 +167,8 @@ typedef struct X_Token
   {
     X_i128 integer;
     X_f64 floating;
-    X_String string;
+    X_Identifier ident;
+    X_String_Lit string;
   };
 } X_Token;
 

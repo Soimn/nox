@@ -367,14 +367,14 @@ typedef struct X_Stmtn_Empty
 typedef struct X_Stmtn_Block
 {
   struct X_Stmnt_Header;
-  X_String* label;
+  X_Expr* label;
   X_Stmnt* body;
 } X_Stmnt_Block;
 
 typedef struct X_Stmnt_If
 {
   struct X_Stmnt_Header;
-  X_String* label;
+  X_Expr* label;
   X_Expr* condition;
   X_Stmnt* then_stmnt;
   X_Stmnt* else_stmnt;
@@ -383,7 +383,7 @@ typedef struct X_Stmnt_If
 typedef struct X_Stmnt_While
 {
   struct X_Stmnt_Header;
-  X_String* label;
+  X_Expr* label;
   X_Expr* condition;
   X_Stmnt* body;
 } X_Stmnt_While;

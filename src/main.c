@@ -94,6 +94,9 @@ typedef struct X_File
   X_u8 content[];
 } X_File;
 
+typedef X_u32 X_Identifier;
+typedef X_u32 X_String_Lit;
+
 typedef struct X_Workspace
 {
   X_Arena* file_arena;
