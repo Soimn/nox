@@ -95,7 +95,6 @@ typedef struct X_File
 } X_File;
 
 typedef X_u32 X_Identifier;
-typedef X_u32 X_String_Lit;
 
 typedef struct X_Workspace
 {

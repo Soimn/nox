@@ -2,6 +2,8 @@ typedef struct X_Parser
 {
   X_Lexer lexer;
   X_Token tokens[2];
+
+	X_Error_Report error_report;
 } X_Parser;
 
 X_Token
@@ -71,10 +73,6 @@ X_Parser_ParsePrimaryExpr(X_Parser* state, X_Expr** expr)
     (*expr)->compound_expr.expr = comp;
   }
   else if (X_EatToken(X_Token_Struct))
-  {
-    X_NOT_IMPLEMENTED;
-  }
-  else if (X_EatToken(X_Token_Union))
   {
     X_NOT_IMPLEMENTED;
   }

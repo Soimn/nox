@@ -168,7 +168,7 @@ typedef struct X_Token
     X_i128 integer;
     X_f64 floating;
     X_Identifier ident;
-    X_String_Lit string;
+    X_String string;
   };
 } X_Token;
 
@@ -181,6 +181,9 @@ typedef struct X_Lexer
   X_u32 init_offset_to_line;
   X_u32 line_cursor;
   X_u32 line;
+
+	X_bool has_errors;
+	X_Error_Report error_report;
 } X_Lexer;
 
 X_Lexer
@@ -218,6 +221,7 @@ X_Token
 X_Lexer_NextToken(X_Lexer* lexer)
 {
   X_Token token = { .kind = X_Token_Invalid };
+	if (lexer->has_errors) return token;
 
   for (;;)
   {
@@ -627,6 +631,7 @@ X_Lexer_NextToken(X_Lexer* lexer)
         else
         {
           //// ERROR: Unknown symbol
+					lexer->error_report ;
         }
       } break;
     }

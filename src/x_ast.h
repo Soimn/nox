@@ -175,13 +175,13 @@ typedef struct X_AST_Arg
 typedef struct X_Expr_Identifier
 {
   struct X_Expr_Header;
-  X_String* string;
+  X_Identifier ident;
 } X_Expr_Identifier;
 
 typedef struct X_Expr_String
 {
   struct X_Expr_Header;
-  X_String* string;
+  X_String string;
 } X_Expr_String;
 
 typedef struct X_Expr_Int
