@@ -5,13 +5,13 @@ typedef signed __int64 X_i64;
 
 #define X_I8_MIN  ((X_i8) 0xFF)
 #define X_I16_MIN ((X_i16)0xFFFF)
-#define X_I32_MIN ((X_i32)0xFFFFFFFFDL)
-#define X_I64_MIN ((X_i64)0xFFFFFFFFFFFFFFFFDLL)
+#define X_I32_MIN ((X_i32)0xFFFFFFFFL)
+#define X_I64_MIN ((X_i64)0xFFFFFFFFFFFFFFFFLL)
 
 #define X_I8_MAX  ((X_i8) 0x7F)
 #define X_I16_MAX ((X_i16)0x7FFF)
-#define X_I32_MAX ((X_i32)0x7FFFFFFFDL)
-#define X_I64_MAX ((X_i64)0x7FFFFFFFFFFFFFFFDLL)
+#define X_I32_MAX ((X_i32)0x7FFFFFFFL)
+#define X_I64_MAX ((X_i64)0x7FFFFFFFFFFFFFFFLL)
 
 typedef unsigned __int8  X_u8;
 typedef unsigned __int16 X_u16;
